@@ -1,6 +1,9 @@
+import serverless from "serverless-http";
 import app, { connectDB } from "../server.js";
 
-export default async function handler(req, res) {
-  await connectDB();            // ⭐ IMPORTANT: connect to MongoDB on every request
-  return app(req, res);         // forward request to Express
+const handler = serverless(app);
+
+export default async function handlerWrapper(req, res) {
+  await connectDB(); // ensure cached DB connection
+  return handler(req, res);
 }
