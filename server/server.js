@@ -15,25 +15,20 @@ const app = express();
 // -------------------------------------------
 // ⭐ CORS CONFIG — FULLY FIXED FOR VERCEL
 // -------------------------------------------
-const FRONTEND_URL = process.env.CLIENT_URL_PROD || "https://amzoneg-y334-client.vercel.app";
-const LOCAL_URL = process.env.CLIENT_URL_LOCAL || "http://localhost:5173";
+const FRONTEND_PROD = process.env.CLIENT_URL_PROD || "https://amzoneg-y334-client.vercel.app";
+const FRONTEND_LOCAL = process.env.CLIENT_URL_LOCAL || "http://localhost:5173";
 
-const allowedOrigins = [FRONTEND_URL, LOCAL_URL];
+const allowedOrigins = [FRONTEND_PROD, FRONTEND_LOCAL];
 
-// CORS Middleware
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow Postman / server-to-server
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); // Postman / server requests
 
-      // Allow frontend + localhost
       if (allowedOrigins.includes(origin)) return callback(null, true);
 
-      // Allow all Vercel preview deployments (important)
       if (/https:\/\/.*\.vercel\.app/.test(origin)) return callback(null, true);
 
-      // Block everything else
       return callback(new Error("CORS blocked: " + origin));
     },
     credentials: true,
@@ -50,21 +45,22 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 
-// Health check
+// health check
 app.get("/", (req, res) => {
-  res.status(200).json({ status: "ok", message: "API running successfully" });
+  res.json({ message: "API running on Vercel" });
 });
 
 // -------------------------------------------
-// ⭐ CACHED MONGODB CONNECTION (Vercel safe)
+// ⭐ CACHED MONGODB CONNECTION FOR VERCEL
 // -------------------------------------------
 let cached = global.mongoose;
+
 if (!cached) {
   global.mongoose = { conn: null, promise: null };
   cached = global.mongoose;
 }
 
-async function connectDB() {
+export async function connectDB() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
@@ -72,19 +68,18 @@ async function connectDB() {
   }
 
   cached.conn = await cached.promise;
-  console.log("MongoDB connected");
+  console.log("✅ MongoDB Connected");
   return cached.conn;
 }
 
 // -------------------------------------------
-// LOCAL DEV ONLY — NOT USED IN VERCEL
+// ⭐ LOCAL DEVELOPMENT ONLY
 // -------------------------------------------
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log("Server running on port", PORT));
+    app.listen(PORT, () => console.log("Server running on port " + PORT));
   });
 }
 
 export default app;
-export { connectDB };
