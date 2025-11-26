@@ -13,15 +13,31 @@ dotenv.config();
 const app = express();
 
 // ------------------- CORS -------------------
-const rawOrigins = process.env.CLIENT_URLS || `${process.env.CLIENT_URL_LOCAL},${process.env.CLIENT_URL_PROD}`;
+const rawOrigins =
+  process.env.CLIENT_URLS ||
+  `${process.env.CLIENT_URL_LOCAL},${process.env.CLIENT_URL_PROD}`;
+
+// map and clean
 const allowedOrigins = rawOrigins
   .split(",")
-  .map(s => s.trim())
+  .map((s) => s.trim())
   .filter(Boolean);
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // allow server-to-server requests / tools with no origin
+      if (!origin) return callback(null, true);
+
+      // allow configured origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // allow vercel client domains (preview + custom subdomains)
+      if (/^https?:\/\/([\w-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
+
+      // blocked
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
   })
 );
