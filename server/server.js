@@ -50,6 +50,11 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 
+// quick health-check root
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "ok", message: "API running" });
+});
+
 // ------------------- MONGOOSE with caching (serverless-safe) -------------------
 const mongooseOptions = {
   // keep defaults or add specific options if needed
