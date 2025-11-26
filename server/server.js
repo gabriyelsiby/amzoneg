@@ -12,31 +12,32 @@ dotenv.config();
 
 const app = express();
 
-// ------------------- CORS -------------------
-const rawOrigins =
-  process.env.CLIENT_URLS ||
-  `${process.env.CLIENT_URL_LOCAL},${process.env.CLIENT_URL_PROD}`;
+// -----------------------------------------------------
+// 🔥 CORS FIX — Works for:
+// - Localhost
+// - Your production frontend
+// - All Vercel preview deployments
+// -----------------------------------------------------
 
-// map and clean
-const allowedOrigins = rawOrigins
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  process.env.CLIENT_URL_LOCAL || "http://localhost:5173",
+  process.env.CLIENT_URL_PROD, 
+].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow server-to-server requests / tools with no origin
+      // Allow Postman, server-to-server calls with no origin
       if (!origin) return callback(null, true);
 
-      // allow configured origins
+      // Allow exact origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
 
-      // allow vercel client domains (preview + custom subdomains)
-      if (/^https?:\/\/([\w-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
+      // Allow any *.vercel.app domain
+      if (/https:\/\/.*\.vercel\.app/.test(origin)) return callback(null, true);
 
-      // blocked
-      return callback(new Error("Not allowed by CORS"), false);
+      // Block everything else
+      return callback(new Error("CORS blocked: " + origin), false);
     },
     credentials: true,
   })
@@ -44,23 +45,23 @@ app.use(
 
 app.use(express.json());
 
-// Routes
+// -----------------------------------------------------
+// ROUTES
+// -----------------------------------------------------
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 
-// quick health-check root
+// Health-check
 app.get("/", (req, res) => {
   res.status(200).json({ status: "ok", message: "API running" });
 });
 
-// ------------------- MONGOOSE with caching (serverless-safe) -------------------
-const mongooseOptions = {
-  // keep defaults or add specific options if needed
-  // useNewUrlParser: true,
-  // useUnifiedTopology: true
-};
+// -----------------------------------------------------
+// MONGOOSE CACHED CONNECTION (Vercel serverless safe)
+// -----------------------------------------------------
+const mongooseOptions = {};
 
 let cached = global.mongoose;
 if (!cached) {
@@ -70,19 +71,27 @@ if (!cached) {
 
 export async function connectDB() {
   if (cached.conn) return cached.conn;
+
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGO_URI, mongooseOptions).then(m => m);
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI, mongooseOptions)
+      .then((m) => m);
   }
+
   cached.conn = await cached.promise;
   console.log("MongoDB connected (cached)");
   return cached.conn;
 }
 
-// Only start a standalone HTTP server locally — serverless platforms shouldn't call this.
+// -----------------------------------------------------
+// LOCAL DEV SERVER — NOT RUN ON VERCEL
+// -----------------------------------------------------
 if (!process.env.VERCEL && process.env.NODE_ENV !== "production") {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`Local server running on port ${PORT}`)
+    );
   });
 }
 
