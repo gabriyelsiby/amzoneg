@@ -11,7 +11,7 @@ const Orders = () => {
       const userId = localStorage.getItem("userId");
 
       if (!userId) {
-        navigate("/login"); // redirect if not logged in
+        navigate("/login"); 
         return;
       }
 

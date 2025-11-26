@@ -1,4 +1,4 @@
-import React from "react"; // <-- Add this
+import React from "react"; 
 import { Link } from "react-router-dom";
 
 const ProductCard = ({ product }) => {

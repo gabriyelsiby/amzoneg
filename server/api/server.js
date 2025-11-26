@@ -4,6 +4,6 @@ import app, { connectDB } from "../server.js";
 const handler = serverless(app);
 
 export default async function handlerWrapper(req, res) {
-  await connectDB(); // ensure cached DB connection
+  await connectDB(); 
   return handler(req, res);
 }
